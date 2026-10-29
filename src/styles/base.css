@@ -1,0 +1,24 @@
+@import './tokens.css';
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+}
+
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: radial-gradient(1200px 600px at 70% -10%, #1c2a4a 0%, var(--bg) 55%);
+  color: var(--text);
+}
+
+button,
+input {
+  font: inherit;
+}

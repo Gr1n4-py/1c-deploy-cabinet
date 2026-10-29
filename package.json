@@ -1,0 +1,16 @@
+{
+  "name": "1c-deploy-cabinet",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Личный кабинет для развертки и управления 1С-проектами (UI). Бэкенд: Pode (PowerShell), см. docs/decisions.md",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.3",
+    "vite": "^7.1.0"
+  }
+}

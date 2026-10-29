@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Личный кабинет — 1С Deploy</title>
+<!--
+  UI-прототип «Личного кабинета» (этап 0.5 из 1c-deploy-cabinet-decisions.md).
+  Статическая страница без бэкенда: реестр пользователей имитируется в localStorage.
+  Точки интеграции с будущим Pode-API (см. решения D4/D7):
+    - подсказка по логину  -> GET  /api/users?prefix=<ввод>
+    - вход / автосоздание  -> POST /api/login { name }
+    - «последний пользователь» -> серверная сессия (cookie), сейчас localStorage
+  Открыть: двойной клик по файлу (file://) — работает офлайн.
+-->
+<style>
+  :root {
+    --bg: #0f1420;
+    --bg-soft: #161d2e;
+    --card: #1b2436;
+    --border: #2a3550;
+    --text: #e8edf7;
+    --muted: #8a96b3;
+    --accent: #4f8cff;
+    --accent-hover: #3f7bef;
+    --ok: #37b26c;
+    --warn: #d9a13b;
+    --danger: #e05a5a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: "Segoe UI", system-ui, sans-serif;
+    background: radial-gradient(1200px 600px at 70% -10%, #1c2a4a 0%, var(--bg) 55%);
+    color: var(--text);
+  }
+  .screen { display: none; height: 100vh; }
+  .screen.visible { display: flex; }
+
+  /* ---------- Экран входа ---------- */
+  #login-screen { align-items: center; justify-content: center; }
+  .login-card {
+    width: 380px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 36px 32px 28px;
+    box-shadow: 0 18px 50px rgba(0,0,0,.45);
+  }
+  .logo {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 6px;
+  }
+  .logo-badge {
+    width: 42px; height: 42px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent), #7d5cff);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 18px; color: #fff;
+  }
+  .logo h1 { font-size: 19px; font-weight: 600; }
+  .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 26px; }
+  label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .input-wrap { position: relative; margin-bottom: 10px; }
+  #login-input {
+    width: 100%;
+    background: var(--bg-soft);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 15px;
+    outline: none;
+    transition: border-color .15s;
+  }
+  #login-input:focus { border-color: var(--accent); }
+  .hint {
+    min-height: 34px;
+    font-size: 13px;
+    line-height: 1.35;
+    display: flex; align-items: flex-start; gap: 7px;
+    padding: 6px 2px 12px;
+    opacity: 0;
+    transition: opacity .15s;
+  }
+  .hint.show { opacity: 1; }
+  .hint .dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; flex: none; }
+  .hint.found  { color: var(--ok); }
+  .hint.found  .dot { background: var(--ok); }
+  .hint.new    { color: var(--warn); }
+  .hint.new    .dot { background: var(--warn); }
+  #login-btn {
+    width: 100%;
+    background: var(--accent);
+    border: none; border-radius: 8px;
+    color: #fff; font-size: 15px; font-weight: 600;
+    padding: 12px;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  #login-btn:hover { background: var(--accent-hover); }
+  .login-note {
+    margin-top: 18px; font-size: 12px; color: var(--muted);
+    text-align: center; line-height: 1.5;
+  }
+
+  /* ---------- Рабочий стол ---------- */
+  #desktop-screen { flex-direction: column; }
+  .topbar {
+    height: 56px; flex: none;
+    display: flex; align-items: center; gap: 14px;
+    padding: 0 20px;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+  }
+  .topbar .logo-badge { width: 32px; height: 32px; font-size: 14px; border-radius: 8px; }
+  .topbar-title { font-size: 15px; font-weight: 600; }
+  .spacer { flex: 1; }
+  .user-chip {
+    display: flex; align-items: center; gap: 9px;
+    background: var(--bg-soft);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 5px 14px 5px 6px;
+    font-size: 13px;
+  }
+  .avatar {
+    width: 26px; height: 26px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), #7d5cff);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; color: #fff;
+    text-transform: uppercase;
+  }
+  #logout-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 8px;
+    padding: 7px 14px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  #logout-btn:hover { color: var(--text); border-color: var(--muted); }
+  .desktop-area {
+    flex: 1;
+    margin: 20px;
+    border: 2px dashed var(--border);
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .desktop-placeholder {
+    text-align: center; color: var(--muted);
+  }
+  .desktop-placeholder h2 { font-size: 26px; font-weight: 500; color: var(--text); margin-bottom: 8px; }
+  .desktop-placeholder p { font-size: 13px; }
+
+  .toast {
+    position: fixed; right: 20px; bottom: 20px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--ok);
+    border-radius: 10px;
+    padding: 12px 18px;
+    font-size: 14px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.4);
+    opacity: 0; transform: translateY(8px);
+    transition: opacity .2s, transform .2s;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- ===== Экран входа ===== -->
+<div id="login-screen" class="screen">
+  <div class="login-card">
+    <div class="logo">
+      <div class="logo-badge">1С</div>
+      <h1>Личный кабинет</h1>
+    </div>
+    <div class="subtitle">Развертка и управление 1С-проектами</div>
+
+    <label for="login-input">Имя пользователя</label>
+    <div class="input-wrap">
+      <input id="login-input" type="text" autocomplete="off" spellcheck="false"
+             placeholder="например, vadim">
+    </div>
+    <div id="login-hint" class="hint"><span class="dot"></span><span id="login-hint-text"></span></div>
+
+    <button id="login-btn">Войти</button>
+
+    <div class="login-note">
+      Если пользователь ещё не зарегистрирован — профиль будет создан автоматически.
+      <br>Прототип: данные хранятся локально в браузере.
+    </div>
+  </div>
+</div>
+
+<!-- ===== Рабочий стол ===== -->
+<div id="desktop-screen" class="screen">
+  <div class="topbar">
+    <div class="logo-badge">1С</div>
+    <div class="topbar-title">Личный кабинет</div>
+    <div class="spacer"></div>
+    <div class="user-chip"><div class="avatar" id="user-avatar">?</div><span id="user-name">?</span></div>
+    <button id="logout-btn">Выйти</button>
+  </div>
+  <div class="desktop-area">
+    <div class="desktop-placeholder">
+      <h2>Рабочий стол</h2>
+      <p>здесь появятся проекты пользователя</p>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  var USERS_KEY = 'cabinet_users';     // [{ name, createdAt, lastLoginAt }]
+  var LAST_KEY  = 'cabinet_lastUser';
+
+  function loadUsers() {
+    try { return JSON.parse(localStorage.getItem(USERS_KEY)) || []; }
+    catch (e) { return []; }
+  }
+  function saveUsers(list) { localStorage.setItem(USERS_KEY, JSON.stringify(list)); }
+  function findUser(name) {
+    name = name.toLowerCase();
+    return loadUsers().find(function (u) { return u.name.toLowerCase() === name; });
+  }
+
+  var input = document.getElementById('login-input');
+  var hint  = document.getElementById('login-hint');
+  var hintText = document.getElementById('login-hint-text');
+  var toast = document.getElementById('toast');
+  var toastTimer = null;
+
+  function showToast(text) {
+    toast.textContent = text;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toast.classList.remove('show'); }, 2600);
+  }
+
+  // Подсказка при вводе: есть пользователь или нет
+  function updateHint() {
+    var v = input.value.trim();
+    if (!v) { hint.className = 'hint'; hintText.textContent = ''; return; }
+    if (findUser(v)) {
+      hint.className = 'hint found show';
+      hintText.textContent = 'Пользователь «' + v + '» уже есть на этом компьютере — вход в существующий профиль.';
+    } else {
+      hint.className = 'hint new show';
+      hintText.textContent = 'Пользователь «' + v + '» не найден — при входе будет создан новый профиль.';
+    }
+  }
+
+  function login() {
+    var name = input.value.trim();
+    if (!name) {
+      input.focus();
+      hint.className = 'hint new show';
+      hintText.textContent = 'Введите имя пользователя.';
+      return;
+    }
+    var users = loadUsers();
+    var isNew = !findUser(name);
+    if (isNew) {
+      users.push({ name: name, createdAt: new Date().toISOString(), lastLoginAt: new Date().toISOString() });
+    } else {
+      users.forEach(function (u) {
+        if (u.name.toLowerCase() === name.toLowerCase()) u.lastLoginAt = new Date().toISOString();
+      });
+    }
+    saveUsers(users);
+    localStorage.setItem(LAST_KEY, name);
+    openDesktop(name, isNew);
+  }
+
+  function openDesktop(name, isNew) {
+    document.getElementById('user-name').textContent = name;
+    document.getElementById('user-avatar').textContent = name.charAt(0);
+    document.getElementById('login-screen').classList.remove('visible');
+    document.getElementById('desktop-screen').classList.add('visible');
+    showToast(isNew ? 'Создан новый профиль: ' + name : 'Вы вошли как ' + name);
+  }
+
+  function logout() {
+    localStorage.removeItem(LAST_KEY);
+    document.getElementById('desktop-screen').classList.remove('visible');
+    document.getElementById('login-screen').classList.add('visible');
+    input.value = '';
+    updateHint();
+    input.focus();
+  }
+
+  input.addEventListener('input', updateHint);
+  input.addEventListener('keydown', function (e) { if (e.key === 'Enter') login(); });
+  document.getElementById('login-btn').addEventListener('click', login);
+  document.getElementById('logout-btn').addEventListener('click', logout);
+
+  // Автовход последнего пользователя при повторном открытии кабинета
+  var last = localStorage.getItem(LAST_KEY);
+  if (last && findUser(last)) {
+    openDesktop(last, false);
+  } else {
+    if (last && !findUser(last)) localStorage.removeItem(LAST_KEY);
+    document.getElementById('login-screen').classList.add('visible');
+    input.focus();
+  }
+})();
+</script>
+</body>
+</html>
