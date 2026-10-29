@@ -27,10 +27,16 @@
   (перед командами добавлять в PATH сессии, не менять системный PATH).
 - **npm вызывать как `npm.cmd`** — `npm.ps1` блокируется политикой выполнения PowerShell 5.1.
 - **git** — PortableGit:
-  `C:\Users\Н_Вадим\Desktop\НаумовЗадания\полезные обработки\ai\PortableGit`
-  (в нём есть только wincred-хелпер, GCM OAuth-вход он не проводит).
-- Git Credential Manager 3.0.2 (согласован 2026-10-29) лежит в `.tools\gcm\git-credential-manager.exe`
-  (каталог `.tools` в .gitignore). Подключен как credential.helper в локальной конфигурации repo.
+  `C:\Users\Н_Вадим\Desktop\НаумовЗадания\полезные обработки\ai\PortableGit`.
+- **Учетные данные GitHub**: персональный токен (PAT) пользователя сохранен в
+  **Windows Credential Manager** через встроенный helper `wincred`
+  (repo-конфигурация: `credential.helper=wincred`). Обычные push спрашивать
+  токен у пользователя **не нужно**. GCM (`git-credential-manager.exe`) из
+  `.tools\gcm` не использовать — в headless-сессии не работает и открывает окна.
+  Если токен отозван/истек (403/401 при push): попросить пользователя выпустить
+  новый PAT (Fine-grained, только репозиторий 1c-deploy-cabinet, Contents:
+  Read and write) и сохранить командой
+  `"protocol=https", "host=github.com", "username=Gr1n4-py", "password=<TOKEN>", "" | git credential approve`.
 
 ## 3. Процесс работы
 

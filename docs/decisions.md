@@ -234,3 +234,30 @@ Job Runner (powershell.exe -File runner.ps1 -RunId ...)
 - ведение проектов — **в разрезе пользователя** (в реестре D7 предусмотреть поле `owner` в project.json).
 
 Точки интеграции с будущим API: подсказка → `GET /api/users?prefix=`, вход → `POST /api/login {name}`, сессия → cookie на сервере (сейчас localStorage). Пароль не предусмотрен (локальный однопользовательский компьютер); если понадобится — добавить позже, не ломая контракт.
+
+---
+
+## 11. Статус работ и передача контекста (2026-10-29)
+
+**Этот раздел — точка входа для новой сессии.** Читать вместе с README.md и AGENTS.md.
+
+### Что уже сделано
+- Проект перенесен из `C:\1C_Bases\AI\script` в `C:\1C_Bases\AI\cabinet` — это корень git-репозитория `Gr1n4-py/1c-deploy-cabinet` (ветка `main`).
+- Фронтенд переписан по лучшим практикам: Vite + TypeScript (strict), hash-роутер, страницы login/desktop, компоненты topbar/toast, дизайн-токены. Правила кода — README.md.
+- `npm run build` проходит (tsc --noEmit + vite build). Исторический прототип — `prototype-legacy/index.html`, не развивать.
+- Правила для агентов — **AGENTS.md** в корне (обязателен к исполнению: без спроса ничего не скачивать/устанавливать).
+- GitHub: токен (PAT) пользователя сохранен в Windows Credential Manager через helper `wincred`. На момент записи этого раздела токен выдает 403 на push — пользователь исправляет права (Contents: Read and write) на https://github.com/settings/personal-access-tokens. После исправления: `git push -u origin main` + тег `v0.1.0`.
+
+### Как запускать разработку
+```powershell
+# рабочая папка C:\1C_Bases\AI\cabinet
+$env:PATH = 'C:\Users\Н_Вадим\Desktop\НаумовЗадания\полезные обработки\ai\nodejs;' + $env:PATH
+npm.cmd run dev      # http://localhost:5173
+npm.cmd run build    # проверка перед каждым push
+```
+(npm именно `npm.cmd` — npm.ps1 блокируется политикой PS 5.1.)
+
+### Следующий шаг — Этап 0 (см. п.7 дорожной карты)
+Рефакторинг `C:\1C_Bases\AI\1c-deploy_new\deploy-new-1c-project-ru-publish.ps1` в PowerShell-модуль шагов
+(`Modules/Core`, таблица соответствия — п.5) + `runner.ps1` с JSON-манифестом и JSON-lines событиями.
+Требование: поведение деплоя не меняется (регрессия на реальном .dt). Затем Этап 1 — Pode + связка с этим фронтендом (`src/lib/storage.ts` заменяется на `src/api/`).
