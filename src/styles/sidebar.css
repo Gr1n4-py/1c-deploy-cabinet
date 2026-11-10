@@ -1,0 +1,101 @@
+/* Левая панель вкладок рабочего стола: свернутые вкладки компактны,
+   активная — увеличена и выделена фоном, остальные остаются небольшими. */
+
+.sidebar {
+  width: 268px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 12px;
+  background: var(--card);
+  border-right: 1px solid var(--border);
+}
+
+.side-tab {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: var(--muted);
+  padding: 9px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, padding 0.15s;
+}
+
+.side-tab:hover:not(.disabled) {
+  background: var(--bg-soft);
+  color: var(--text);
+}
+
+.side-tab.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--text);
+  padding: 16px 14px;
+}
+
+.side-tab.disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.side-tab-badge {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.side-tab.active .side-tab-badge {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.side-tab-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.side-tab.active .side-tab-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.side-tab-note {
+  font-size: 11px;
+}
+
+/* Акцентная кнопка в центральной области (Глаша, запуск мастера) */
+.accent-btn {
+  margin-top: 22px;
+  background: var(--accent);
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 12px 26px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.accent-btn:hover {
+  background: var(--accent-hover);
+}

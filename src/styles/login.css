@@ -1,8 +1,32 @@
 .login-screen {
+  position: relative;
   display: flex;
   height: 100%;
   align-items: center;
   justify-content: center;
+}
+
+/* Шестеренка «Настройки» рядом с панелью логина */
+.settings-gear {
+  position: absolute;
+  top: 20px;
+  right: 22px;
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.settings-gear:hover {
+  color: var(--text);
+  border-color: var(--muted);
 }
 
 .login-card {

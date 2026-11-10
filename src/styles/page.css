@@ -1,0 +1,43 @@
+/* Общая раскладка внутренних страниц: центрированный плейсхолдер, кнопка «назад». */
+
+.page-center {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+}
+
+.content-placeholder {
+  text-align: center;
+  color: var(--muted);
+}
+
+.content-placeholder h2 {
+  font-size: 24px;
+  font-weight: 500;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.content-placeholder p {
+  font-size: 13px;
+  max-width: 440px;
+  line-height: 1.5;
+}
+
+.back-btn {
+  margin-top: 22px;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: 8px;
+  padding: 9px 18px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.back-btn:hover {
+  color: var(--text);
+  border-color: var(--muted);
+}

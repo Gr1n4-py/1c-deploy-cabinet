@@ -2,6 +2,11 @@
 node_modules/
 dist/
 .tools/
+build/
+release/
+
+# Рабочие файлы для ИИ-агента
+files/
 
 # Локальные настройки и секреты — в git не попадают
 .env

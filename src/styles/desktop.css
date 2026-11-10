@@ -4,7 +4,13 @@
   height: 100%;
 }
 
-.desktop-area {
+.desktop-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.desktop-content {
   flex: 1;
   margin: 20px;
   border: 2px dashed var(--border);
@@ -12,20 +18,5 @@
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.desktop-placeholder {
-  text-align: center;
-  color: var(--muted);
-}
-
-.desktop-placeholder h2 {
-  font-size: 26px;
-  font-weight: 500;
-  color: var(--text);
-  margin-bottom: 8px;
-}
-
-.desktop-placeholder p {
-  font-size: 13px;
+  overflow: auto;
 }

@@ -1,0 +1,388 @@
+/* Мастер новой развертки: пошаговая форма с валидацией. */
+
+.wizard-screen {
+  height: 100%;
+  overflow: auto;
+  padding: 24px;
+  display: flex;
+  justify-content: center;
+}
+
+.wizard-card {
+  width: 640px;
+  max-width: 100%;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 24px 28px 20px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+}
+
+.wizard-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.wizard-title {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.wizard-close {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.wizard-close:hover {
+  color: var(--text);
+  border-color: var(--muted);
+}
+
+.wizard-steps {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 18px;
+}
+
+.wizard-body {
+  min-height: 280px;
+}
+
+.wfield {
+  margin-bottom: 14px;
+}
+
+.wfield-label {
+  display: block;
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.wfield-label > span {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.wfield-input {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+/* select вне flex-строки — на всю ширину */
+label > select.wfield-input {
+  width: 100%;
+  flex: none;
+}
+
+.wfield-input:focus {
+  border-color: var(--accent);
+}
+
+.wfield-input.invalid {
+  border-color: var(--danger);
+}
+
+.wfield-input-row {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.wfield-browse {
+  flex: none;
+  width: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.wfield-browse:hover:enabled {
+  color: var(--text);
+  border-color: var(--muted);
+}
+
+.wfield-browse:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.wfield-error {
+  font-size: 12px;
+  color: var(--danger);
+  min-height: 15px;
+  margin-top: 4px;
+}
+
+.wfield-hint {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+/* выбор платформы */
+
+.wplatform-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.wplatform-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 9px 12px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.wplatform-item:hover {
+  border-color: var(--muted);
+}
+
+.wplatform-item input {
+  accent-color: var(--accent);
+  flex: none;
+}
+
+.wplatform-path {
+  font-family: Consolas, monospace;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* источник базы в мастере: переключатель .dt / шаблон конфигурации (D13) */
+
+.wsource-toggle {
+  display: flex;
+  gap: 6px;
+}
+
+.wsource-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 9px 12px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.wsource-item:hover {
+  border-color: var(--muted);
+}
+
+.wsource-item input {
+  accent-color: var(--accent);
+  flex: none;
+}
+
+.wtemplate-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* чекбоксы компонентов */
+
+.wcheck {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 0;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.wcheck input {
+  accent-color: var(--accent);
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+
+/* предпросмотр манифеста */
+
+.wizard-preview {
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-family: Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text);
+  max-height: 240px;
+  overflow: auto;
+  white-space: pre;
+}
+
+.wizard-errors {
+  font-size: 12px;
+  color: var(--danger);
+  min-height: 15px;
+  margin-top: 4px;
+  line-height: 1.45;
+}
+
+/* подвал: навигация по шагам */
+
+.wizard-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.wbtn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.wbtn:hover:enabled {
+  color: var(--text);
+  border-color: var(--muted);
+}
+
+.wbtn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.wbtn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.wbtn-primary:hover:enabled {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+  color: #fff;
+}
+
+/* экран завершения */
+
+.wizard-done h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.wizard-done p {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 6px;
+  word-break: break-all;
+}
+
+.wizard-done-note {
+  margin-top: 10px;
+  line-height: 1.5;
+}
+
+.wizard-done .wbtn {
+  margin-top: 16px;
+}
+
+/* Монитор прогона runner */
+.monitor-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 10px 0;
+  max-height: 320px;
+  overflow: auto;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.monitor-step {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.monitor-step.start {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.monitor-step.success {
+  color: var(--ok);
+}
+
+.monitor-step.success .monitor-dot {
+  color: var(--ok);
+}
+
+.monitor-step.error {
+  color: var(--danger);
+}
+
+.monitor-step.pending {
+  opacity: 0.5;
+}
+
+.monitor-step.skipped {
+  opacity: 0.6;
+}
+
+.monitor-dot {
+  width: 14px;
+  flex: none;
+  text-align: center;
+  font-weight: 700;
+}
+
+.monitor-sep {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 12px 0;
+}

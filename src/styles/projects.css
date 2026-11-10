@@ -1,0 +1,321 @@
+/* Вкладка «Мои проекты»: карточки проектов из реестра + модал удаления. */
+
+.projects-tab {
+  width: 100%;
+}
+
+.projects-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.projects-msg {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.project-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 16px;
+  transition: border-color 0.15s;
+}
+
+.project-card:hover {
+  border-color: var(--muted);
+}
+
+.project-card-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.project-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* Конфигурация — под наименованием проекта, тем же размером, что было у имени */
+.project-config {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  margin-top: 2px;
+  line-height: 1.35;
+}
+
+/* Релиз — отдельной строкой под конфигурацией */
+.project-release {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  margin-top: 1px;
+}
+
+.project-path {
+  font-family: Consolas, monospace;
+  font-size: 11px;
+  color: var(--muted);
+  word-break: break-all;
+  margin-top: 2px;
+}
+
+.project-pub {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Точка статуса публикации: серая — проверяется, зеленая — доступна, красная — нет */
+.pub-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.pub-dot-check {
+  background: var(--muted);
+}
+
+.pub-dot-ok {
+  background: var(--ok);
+}
+
+.pub-dot-fail {
+  background: var(--danger);
+}
+
+.pub-status-text {
+  color: var(--muted);
+}
+
+.project-delete {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+/* Детальная информация по проекту (info из выгрузки исходников) */
+
+.project-info {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.project-info-row {
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.45;
+}
+
+.project-info-label {
+  color: var(--muted);
+}
+
+.project-info-value {
+  word-break: break-all;
+}
+
+/* Блок расширений: заголовок «Расширения:» и строки без указания типа */
+.project-extensions-label {
+  margin-top: 5px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.project-ext-row {
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.45;
+}
+
+.project-updated {
+  margin-top: 5px;
+  font-size: 11px;
+  font-style: italic;
+  color: var(--muted);
+}
+
+.project-info-empty {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Колонка действий карточки */
+
+.project-actions {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 190px;
+}
+
+.project-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 12px;
+  font-size: 12px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  white-space: nowrap;
+}
+
+.project-btn-ico {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+}
+
+.project-btn-ico img {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+}
+
+.project-btn:hover:enabled {
+  border-color: var(--muted);
+  background: var(--card);
+}
+
+.project-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.project-btn-accent {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.project-btn-accent:hover:enabled {
+  background: var(--accent-soft);
+  border-color: var(--accent-hover);
+}
+
+.project-delete:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+/* Модальное окно подтверждения удаления */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.modal-card {
+  width: 520px;
+  max-width: 92%;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 22px 26px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.modal-card h3 {
+  font-size: 17px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.modal-card p {
+  font-size: 13px;
+  color: var(--muted);
+  word-break: break-all;
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+.modal-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.wbtn-danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+  font-weight: 600;
+}
+
+.wbtn-danger:hover:enabled {
+  background: var(--danger);
+  filter: brightness(0.88);
+  border-color: var(--danger);
+  color: #fff;
+}
+
+/* Окно ожидания удаления: вращающийся кружок */
+
+.modal-spinner-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 0 6px;
+}
+
+.modal-spinner {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  animation: modal-spin 0.9s linear infinite;
+}
+
+.modal-spinner-text {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+@keyframes modal-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

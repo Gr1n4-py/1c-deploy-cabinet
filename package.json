@@ -3,14 +3,47 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Личный кабинет для развертки и управления 1С-проектами (UI). Бэкенд: Pode (PowerShell), см. docs/decisions.md",
+  "description": "Личный кабинет для развертки и управления 1С-проектами (Electron-приложение, см. docs/decisions.md)",
+  "main": "electron/main.cjs",
   "scripts": {
     "dev": "vite",
+    "backend": "powershell -NoProfile -ExecutionPolicy Bypass -File backend/server.ps1",
+    "app": "electron .",
+    "app:build": "npm run build && electron-builder --win",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview"
   },
   "devDependencies": {
+    "electron": "^45.1.0",
+    "electron-builder": "^26.18.0",
     "typescript": "~5.9.3",
     "vite": "^7.1.0"
+  },
+  "build": {
+    "appId": "py.grin4.cabinet",
+    "productName": "1C Cabinet",
+    "directories": {
+      "output": "build/app"
+    },
+    "files": [
+      "electron/**"
+    ],
+    "extraResources": [
+      {
+        "from": "dist",
+        "to": "dist"
+      },
+      {
+        "from": "runner",
+        "to": "runner"
+      }
+    ],
+    "win": {
+      "target": [
+        "dir",
+        "portable"
+      ],
+      "icon": "public/icon.png"
+    }
   }
 }

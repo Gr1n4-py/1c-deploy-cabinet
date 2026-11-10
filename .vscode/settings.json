@@ -1,0 +1,21 @@
+{
+  // Артефакты сборки исключены из проводника, поиска и файлового вотчера VS Code:
+  // иначе VS Code открывает хэндлы на файлы Electron и ломает electron-builder (EBUSY)
+  "files.exclude": {
+    "release": true,
+    "dist": true,
+    "node_modules": true
+  },
+  "search.exclude": {
+    "build": true,
+    "release": true,
+    "dist": true,
+    "node_modules": true
+  },
+  "files.watcherExclude": {
+    "build/**": true,
+    "release/**": true,
+    "dist/**": true,
+    "node_modules/**": true
+  }
+}
