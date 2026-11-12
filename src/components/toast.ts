@@ -2,9 +2,12 @@
 
 type ToastKind = 'ok' | 'warn';
 
+/** Сколько миллисекунд плашка висит на экране (6 с — чтобы успеть прочитать). */
+const TOAST_MS = 6000;
+
 let hideTimer: number | undefined;
 
-export function showToast(text: string, kind: ToastKind = 'ok'): void {
+export function showToast(text: string, kind: ToastKind = 'ok', durationMs: number = TOAST_MS): void {
   let el = document.querySelector<HTMLDivElement>('[data-ref="toast"]');
   if (!el) {
     el = document.createElement('div');
@@ -18,5 +21,5 @@ export function showToast(text: string, kind: ToastKind = 'ok'): void {
   void el.offsetWidth;
   el.classList.add('show', `toast-${kind}`);
   window.clearTimeout(hideTimer);
-  hideTimer = window.setTimeout(() => el?.classList.remove('show'), 2600);
+  hideTimer = window.setTimeout(() => el?.classList.remove('show'), durationMs);
 }

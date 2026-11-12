@@ -183,11 +183,17 @@ label > select.wfield-input {
   margin-top: 2px;
 }
 
-/* источник базы в мастере: переключатель .dt / шаблон конфигурации (D13) */
+/* источник базы: переключатель .dt / шаблон конфигурации (D13),
+   с 2026-11-10 живет на вкладке «Добавить новый проект» (ibSourcePicker) */
 
 .wsource-toggle {
   display: flex;
   gap: 6px;
+}
+
+/* вертикальный стек пунктов — для панели выбора источника */
+.wsource-toggle-stack {
+  flex-direction: column;
 }
 
 .wsource-item {
@@ -208,6 +214,149 @@ label > select.wfield-input {
 }
 
 .wsource-item input {
+  accent-color: var(--accent);
+  flex: none;
+}
+
+.wsource-item-disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.wsource-item-disabled:hover {
+  border-color: var(--border);
+}
+
+.wsource-note {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.wsource-next {
+  margin-top: 16px;
+}
+
+/* напоминание о выбранном источнике ИБ на шаге 1 мастера */
+.wizard-source-note {
+  font-size: 12px;
+  color: var(--muted);
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-bottom: 14px;
+  word-break: break-all;
+}
+
+/* панель выбора источника в центральной области рабочего стола */
+
+.new-source-panel {
+  width: 640px;
+  max-width: calc(100% - 32px);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 24px 28px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+  text-align: left;
+}
+
+.new-source-panel h2 {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 6px;
+}
+
+.new-source-panel > p {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0 0 16px;
+}
+
+/* дерево установленных шаблонов конфигураций */
+
+.wtree {
+  max-height: 260px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-soft);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.wtree:empty {
+  display: none;
+}
+
+.wtree-node {
+  min-width: 0;
+}
+
+.wtree-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 8px;
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 6px;
+  user-select: none;
+}
+
+.wtree-row:hover {
+  color: var(--text);
+}
+
+.wtree-vendor {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.wtree-name {
+  padding-left: 26px;
+}
+
+.wtree-caret {
+  width: 14px;
+  flex: none;
+  color: var(--muted);
+  font-size: 11px;
+  text-align: center;
+}
+
+.wtree-children {
+  margin-left: 13px;
+  border-left: 1px solid var(--border);
+  padding-left: 6px;
+}
+
+.wtree-children.wtree-collapsed {
+  display: none;
+}
+
+.wtree-leaf {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  border-radius: 8px;
+  padding: 7px 10px;
+  cursor: pointer;
+  font-size: 13px;
+  margin: 3px 0;
+  min-width: 0;
+}
+
+.wtree-leaf:hover {
+  border-color: var(--muted);
+}
+
+.wtree-leaf input {
   accent-color: var(--accent);
   flex: none;
 }

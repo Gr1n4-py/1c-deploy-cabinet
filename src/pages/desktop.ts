@@ -6,6 +6,7 @@ import '../styles/projects.css';
 import designerIconUrl from '../assets/designer.png';
 import enterpriseIconUrl from '../assets/enterprise.png';
 import { createTopBar } from '../components/topbar';
+import { renderIbSourcePicker } from '../components/ibSourcePicker';
 import { clearLastUser, getLastUserName } from '../lib/storage';
 import { apiGet, apiPost, type ProjectInfo, type ProjectRecord } from '../api/client';
 import { navigate } from '../router';
@@ -94,15 +95,19 @@ export function renderDesktopPage(app: HTMLElement): void {
         return;
       }
       case 'new': {
-        title.textContent = 'Добавить новый проект';
-        text.textContent = 'Помощник проведет по шагам: проект → платформа → доступ → компоненты.';
-        const start = document.createElement('button');
-        start.className = 'accent-btn';
-        start.type = 'button';
-        start.textContent = 'Запустить помощник развертки';
-        start.addEventListener('click', () => navigate('new-project'));
-        box.appendChild(start);
-        break;
+        // Выбор источника ИБ прямо в центральной области; мастер открывается
+        // по «Следующий шаг» (см. src/components/ibSourcePicker.ts)
+        const panel = document.createElement('div');
+        panel.className = 'new-source-panel';
+        const head = document.createElement('h2');
+        head.textContent = 'Добавить новый проект';
+        const sub = document.createElement('p');
+        sub.textContent = 'Шаг 1. Выберите источник информационной базы.';
+        panel.appendChild(head);
+        panel.appendChild(sub);
+        renderIbSourcePicker(panel, () => navigate('new-project'));
+        content.appendChild(panel);
+        return;
       }
       case 'glasha': {
         title.textContent = 'Глаша';

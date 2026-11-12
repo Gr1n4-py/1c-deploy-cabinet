@@ -99,3 +99,12 @@
 .accent-btn:hover {
   background: var(--accent-hover);
 }
+
+.accent-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.accent-btn:disabled:hover {
+  background: var(--accent);
+}

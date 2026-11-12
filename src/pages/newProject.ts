@@ -1,15 +1,16 @@
 import '../styles/page.css';
 import '../styles/wizard.css';
-import { apiGet, apiPost, type DeployResult, type DeployStatusResult, type PlatformsResult, type TemplateInstallResult, type TemplatesResult, type ToolBrowseResult } from '../api/client';
+import { apiGet, apiPost, type DeployResult, type DeployStatusResult, type PlatformsResult, type ToolBrowseResult } from '../api/client';
 import { navigate } from '../router';
 import { showToast } from '../components/toast';
+import { deployDraft, type DeployIbSource } from '../lib/deployDraft';
 
 interface WizardState {
   name: string;
   projectDir: string;
   templateDir: string;
   /** Источник базы: файл выгрузки .dt или установленный шаблон конфигурации (D13). */
-  ibSource: 'dt' | 'template';
+  ibSource: DeployIbSource;
   dtPath: string;
   /** Каталог версии выбранного шаблона (…\Разработчик\Имя\Версия). */
   templatePath: string;
@@ -40,16 +41,23 @@ const IB_PRESETS = [
   { user: 'Администратор узла', password: '', note: 'Розница 2.3' },
 ];
 
-/** Мастер новой развертки: шаги с валидацией, «Предыдущий/Следующий шаг». */
+/** Мастер новой развертки: шаги с валидацией, «Предыдущий/Следующий шаг».
+ * Источник ИБ выбирается до мастера — на вкладке «Добавить новый проект»
+ * (src/components/ibSourcePicker.ts), сюда приходит готовый выбор из deployDraft. */
 export function renderNewProjectPage(app: HTMLElement): void {
+  // Прямой переход по хэшу без выбора источника — назад на рабочий стол
+  if (!deployDraft.ready) {
+    navigate('desktop');
+    return;
+  }
   const state: WizardState = {
     name: '',
     projectDir: '',
     templateDir: '',
-    ibSource: 'dt',
-    dtPath: '',
-    templatePath: '',
-    templateSourceFile: '',
+    ibSource: deployDraft.ibSource,
+    dtPath: deployDraft.dtPath,
+    templatePath: deployDraft.templatePath,
+    templateSourceFile: deployDraft.templateSourceFile,
     platformVersion: '',
     platformBinPath: '',
     ibcmdPath: '',
@@ -95,10 +103,6 @@ function buildWizard(app: HTMLElement, state: WizardState): void {
   let platforms: PlatformsResult['platforms'] = [];
   let platformsError = '';
   let platformsLoadedOnce = false;
-  let templates: TemplatesResult['templates'] = [];
-  let templatesRoot = '';
-  let templatesLoadedOnce = false;
-  let installingZip = false;
   let deploying = false;
   let deployErrors: string[] = [];
   let done: DeployResult | null = null;
@@ -158,7 +162,8 @@ function buildWizard(app: HTMLElement, state: WizardState): void {
   }
 
   function updateFooter(): void {
-    prevBtn.disabled = done !== null || step === 0;
+    prevBtn.disabled = done !== null;
+    prevBtn.textContent = step === 0 && done === null ? '← Выбрать другой источник' : '← Предыдущий шаг';
     if (done !== null) {
       nextBtn.style.display = 'none';
       return;
@@ -301,6 +306,14 @@ function buildWizard(app: HTMLElement, state: WizardState): void {
   }
 
   function renderStepProject(): void {
+    // Выбранный источник ИБ — напоминание (меняется на вкладке рабочего стола)
+    const srcNote = document.createElement('div');
+    srcNote.className = 'wizard-source-note';
+    srcNote.textContent = state.ibSource === 'dt'
+      ? `Источник ИБ: файл выгрузки ${state.dtPath}`
+      : `Источник ИБ: шаблон конфигурации ${state.templatePath}${state.templateSourceFile ? ` (${state.templateSourceFile})` : ''}`;
+    body.appendChild(srcNote);
+
     body.appendChild(textField('Имя проекта', 'name', { required: true, placeholder: 'например, МойПроект' }));
     body.appendChild(textField('Папка проекта', 'projectDir', {
       required: true,
@@ -313,239 +326,6 @@ function buildWizard(app: HTMLElement, state: WizardState): void {
       hint: 'Необязательно: env.json, packagedef, .kilo, tools/mcp-1c.',
       browse: 'dir',
     }));
-
-    // Источник базы: файл выгрузки .dt или установленный шаблон конфигурации (D13)
-    const srcWrap = document.createElement('div');
-    srcWrap.className = 'wfield';
-    const srcLabel = document.createElement('div');
-    srcLabel.className = 'wfield-label';
-    srcLabel.textContent = 'Источник информационной базы *';
-    srcWrap.appendChild(srcLabel);
-    const toggle = document.createElement('div');
-    toggle.className = 'wsource-toggle';
-    const modes: { value: 'dt' | 'template'; label: string }[] = [
-      { value: 'dt', label: 'Файл выгрузки .dt' },
-      { value: 'template', label: 'Шаблон конфигурации' },
-    ];
-    for (const mode of modes) {
-      const item = document.createElement('label');
-      item.className = 'wsource-item';
-      const radio = document.createElement('input');
-      radio.type = 'radio';
-      radio.name = 'ib-source';
-      radio.checked = state.ibSource === mode.value;
-      const text = document.createElement('span');
-      text.textContent = mode.label;
-      item.appendChild(radio);
-      item.appendChild(text);
-      radio.addEventListener('change', () => {
-        if (state.ibSource === mode.value) return;
-        state.ibSource = mode.value;
-        renderStep();
-      });
-      toggle.appendChild(item);
-    }
-    srcWrap.appendChild(toggle);
-    body.appendChild(srcWrap);
-
-    if (state.ibSource === 'dt') {
-      body.appendChild(textField('Файл выгрузки .dt', 'dtPath', {
-        required: true,
-        placeholder: 'C:\\dumps\\МойПроект.dt',
-        hint: 'Существующая выгрузка информационной базы.',
-        browse: 'dt',
-      }));
-    } else {
-      renderTemplatePick();
-    }
-  }
-
-  /** Выбор шаблона конфигурации + источника в нем + установка из zip. */
-  function renderTemplatePick(): void {
-    const wrap = document.createElement('div');
-    wrap.className = 'wfield';
-    const label = document.createElement('div');
-    label.className = 'wfield-label';
-    label.textContent = 'Установленный шаблон конфигурации *';
-    wrap.appendChild(label);
-
-    const list = document.createElement('div');
-    list.className = 'wplatform-list';
-    wrap.appendChild(list);
-
-    const status = document.createElement('div');
-    status.className = 'wfield-hint';
-    wrap.appendChild(status);
-
-    const error = document.createElement('div');
-    error.className = 'wfield-error';
-    wrap.appendChild(error);
-    body.appendChild(wrap);
-
-    const sourceWrap = document.createElement('div');
-    sourceWrap.className = 'wfield';
-    const sourceLabel = document.createElement('label');
-    sourceLabel.className = 'wfield-label';
-    const sourceSpan = document.createElement('span');
-    sourceSpan.textContent = 'Источник базы из шаблона';
-    sourceLabel.appendChild(sourceSpan);
-    const sourceSel = document.createElement('select');
-    sourceSel.className = 'wfield-input';
-    sourceLabel.appendChild(sourceSel);
-    sourceWrap.appendChild(sourceLabel);
-    const sourceHint = document.createElement('div');
-    sourceHint.className = 'wfield-hint';
-    sourceHint.textContent = 'По умолчанию — выгрузка с демо-данными (база с данными для тестирования). «Только конфигурация (1Cv8.cf)» — абсолютно пустая база, без данных.';
-    sourceWrap.appendChild(sourceHint);
-    body.appendChild(sourceWrap);
-
-    const sourceSelCheck = (): string | null => {
-      if (!state.templatePath) return 'Выберите шаблон конфигурации';
-      if (!state.templateSourceFile) return 'Выберите источник базы из шаблона';
-      return null;
-    };
-
-    fieldChecks.push({ errorEl: error, check: sourceSelCheck });
-
-    async function loadTemplates(force = false): Promise<void> {
-      if (!force && templatesLoadedOnce) return;
-      try {
-        status.textContent = 'Загрузка шаблонов…';
-        const r = await apiGet<TemplatesResult>('/api/templates');
-        templates = r.templates;
-        templatesRoot = r.root;
-        templatesLoadedOnce = true;
-        status.textContent = '';
-      } catch {
-        templates = [];
-        templatesRoot = '';
-        templatesLoadedOnce = false;
-        status.textContent = 'Не удалось получить список шаблонов — запустите приложение кабинета';
-      }
-    }
-
-    function renderTemplateList(): void {
-      list.replaceChildren();
-      if (!templatesLoadedOnce) {
-        if (!status.textContent) status.textContent = 'Шаблоны не загружены';
-        return;
-      }
-      if (templates.length === 0) {
-        status.textContent = templatesRoot
-          ? `В каталоге шаблонов не найдено установленных шаблонов: ${templatesRoot}`
-          : 'Каталог шаблонов не задан — укажите его в настройках кабинета (Каталог шаблонов конфигураций)';
-        return;
-      }
-      status.textContent = templatesRoot ? `Каталог шаблонов: ${templatesRoot}` : '';
-      for (const t of templates) {
-        const item = document.createElement('label');
-        item.className = 'wplatform-item';
-        const radio = document.createElement('input');
-        radio.type = 'radio';
-        radio.name = 'template';
-        radio.checked = state.templatePath === t.dir;
-        const text = document.createElement('span');
-        const strong = document.createElement('strong');
-        strong.textContent = `${t.vendor} \\ ${t.name} \\ ${t.version}`;
-        text.appendChild(strong);
-        const mono = document.createElement('div');
-        mono.className = 'wplatform-path';
-        const parts: string[] = [];
-        if (t.cfPath) parts.push('конфигурация (1Cv8.cf)');
-        for (const s of t.sources) parts.push(s.demo ? `демо-выгрузка (${s.file})` : `выгрузка (${s.file})`);
-        mono.textContent = parts.join(' · ') || t.dir;
-        text.appendChild(mono);
-        item.appendChild(radio);
-        item.appendChild(text);
-        radio.addEventListener('change', () => {
-          state.templatePath = t.dir;
-          // Источник по умолчанию — выгрузка с демо-данными (для тестирования),
-          // иначе любая .dt; «только конфигурация» (cf, пустая база) — не дефолт
-          const preferred = t.sources.find((s) => s.demo) ?? t.sources[0] ?? (t.cfPath ? { file: '1Cv8.cf' } : null);
-          state.templateSourceFile = preferred ? preferred.file : '';
-          fillSourceSelect(t);
-          updateErrors();
-        });
-        list.appendChild(item);
-      }
-      const selected = templates.find((t) => t.dir === state.templatePath);
-      if (selected) fillSourceSelect(selected);
-      updateErrors();
-    }
-
-    function fillSourceSelect(t: TemplatesResult['templates'][number]): void {
-      sourceSel.replaceChildren();
-      const empty = document.createElement('option');
-      empty.value = '';
-      empty.textContent = '— выбрать —';
-      sourceSel.appendChild(empty);
-      for (const s of t.sources) {
-        const o = document.createElement('option');
-        o.value = s.file;
-        o.textContent = `${s.label} (${s.file})`;
-        sourceSel.appendChild(o);
-      }
-      if (t.cfPath) {
-        const o = document.createElement('option');
-        o.value = '1Cv8.cf';
-        o.textContent = 'Только конфигурация (1Cv8.cf) — база без данных';
-        sourceSel.appendChild(o);
-      }
-      sourceSel.value = state.templateSourceFile;
-    }
-
-    sourceSel.addEventListener('change', () => {
-      state.templateSourceFile = sourceSel.value;
-      updateErrors();
-    });
-
-    const buttonsRow = document.createElement('div');
-    buttonsRow.className = 'wtemplate-actions';
-    const refresh = document.createElement('button');
-    refresh.className = 'wbtn';
-    refresh.type = 'button';
-    refresh.textContent = 'Обновить список';
-    refresh.addEventListener('click', () => {
-      void loadTemplates(true).then(renderTemplateList);
-    });
-    const installBtn = document.createElement('button');
-    installBtn.className = 'wbtn';
-    installBtn.type = 'button';
-    installBtn.textContent = installingZip ? 'Установка…' : 'Установить из zip…';
-    installBtn.disabled = installingZip;
-    installBtn.addEventListener('click', () => {
-      if (installBtn.disabled) return;
-      void apiPost<ToolBrowseResult>('/api/tools/browse', { kind: 'file', filter: 'zip', defaultPath: '' }, 150000)
-        .then(async (r) => {
-          if (!r.found || !r.path) return;
-          installingZip = true;
-          installBtn.disabled = true;
-          installBtn.textContent = 'Установка…';
-          try {
-            const res = await apiPost<TemplateInstallResult>('/api/templates/install', { zipPath: r.path }, 180000);
-            showToast(`Шаблон установлен: ${res.installed.join(', ')}`);
-            await loadTemplates(true);
-          } catch (err) {
-            const data = (err as { data?: { error?: string } }).data;
-            showToast(data?.error ?? 'Не удалось установить шаблон из архива', 'warn');
-          } finally {
-            installingZip = false;
-            installBtn.disabled = false;
-            installBtn.textContent = 'Установить из zip…';
-          }
-        })
-        .catch(() => showToast('Проводник недоступен — запустите приложение кабинета', 'warn'));
-    });
-    buttonsRow.appendChild(refresh);
-    buttonsRow.appendChild(installBtn);
-    body.appendChild(buttonsRow);
-
-    const hint = document.createElement('div');
-    hint.className = 'wfield-hint';
-    hint.textContent = 'Шаблоны сканирует приложение кабинета: каталог шаблонов из настроек (по умолчанию C:\\1C_Bases\\SHABLONI). Скачивание с releases.1c.ru — вручную; здесь — установка скачанного zip.';
-    body.appendChild(hint);
-
-    void loadTemplates().then(renderTemplateList);
   }
 
   function renderStepPlatform(): void {
@@ -965,10 +745,13 @@ function buildWizard(app: HTMLElement, state: WizardState): void {
   // ---------- навигация по шагам ----------
 
   function goPrev(): void {
-    if (step > 0) {
-      step -= 1;
-      renderStep();
+    // С первого шага — назад к выбору источника ИБ на рабочем столе
+    if (step === 0) {
+      navigate('desktop');
+      return;
     }
+    step -= 1;
+    renderStep();
   }
 
   function goNext(): void {

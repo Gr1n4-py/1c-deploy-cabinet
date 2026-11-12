@@ -108,6 +108,10 @@ export interface TemplatesResult {
 export interface TemplateInstallResult {
   ok: boolean;
   installed: string[];
+  /** true — вместо тихой установки открыт установщик setup.exe (обычное окно). */
+  installer?: boolean;
+  /** Пояснение для пользователя (путь установки, про «Обновить список»). */
+  message?: string;
 }
 
 export interface DeployResult {

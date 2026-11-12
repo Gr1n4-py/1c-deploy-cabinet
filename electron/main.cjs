@@ -477,9 +477,40 @@ function parseMft(text) {
   return out;
 }
 
+// Описание шаблона в каталоге версии: 1Cv8.cf и/или *.dt; источники — секции
+// 1cv8.mft (новая база / демо) либо все *.dt без mft.
+function templateFromDir(dir, vendor, name, version) {
+  const cfPath = path.join(dir, '1Cv8.cf');
+  const mftPath = path.join(dir, '1cv8.mft');
+  let files;
+  try { files = fs.readdirSync(dir); } catch { return null; }
+  const hasCf = files.some((f) => f.toLowerCase() === '1cv8.cf');
+  const dts = files.filter((f) => /\.dt$/i.test(f));
+  if (!hasCf && dts.length === 0) return null;
+  const mft = files.some((f) => f.toLowerCase() === '1cv8.mft')
+    ? parseMft(fs.readFileSync(mftPath, 'utf8'))
+    : null;
+  let sources = mft && mft.configs.length > 0
+    ? mft.configs.filter((c) => c.source).map((c) => ({
+        file: c.source,
+        demo: c.demo,
+        label: c.catalog || c.source,
+      }))
+    : dts.map((f) => ({ file: f, demo: true, label: f }));
+  sources = sources.filter((s) => fs.existsSync(path.join(dir, s.file)));
+  if (sources.length === 0 && !hasCf) return null;
+  return {
+    vendor,
+    name,
+    version,
+    dir,
+    cfPath: hasCf ? cfPath : '',
+    mft: mft ? { vendor: mft.vendor, name: mft.name, version: mft.version, appVersion: mft.appVersion } : null,
+    sources,
+  };
+}
+
 // Реестр установленных шаблонов: сканирование <root>\<разработчик>\<имя>\<версия>.
-// Шаблон = каталог с 1Cv8.cf или хотя бы одним *.dt. Источники — секции mft
-// (новая база / демо) либо все *.dt без mft.
 function scanTemplates(root) {
   const out = [];
   let vendors;
@@ -495,34 +526,8 @@ function scanTemplates(root) {
       for (const ver of versions) {
         if (!ver.isDirectory()) continue;
         const dir = path.join(root, vendor.name, name.name, ver.name);
-        const cfPath = path.join(dir, '1Cv8.cf');
-        const mftPath = path.join(dir, '1cv8.mft');
-        let files;
-        try { files = fs.readdirSync(dir); } catch { continue; }
-        const hasCf = files.some((f) => f.toLowerCase() === '1cv8.cf');
-        const dts = files.filter((f) => /\.dt$/i.test(f));
-        if (!hasCf && dts.length === 0) continue;
-        const mft = files.some((f) => f.toLowerCase() === '1cv8.mft')
-          ? parseMft(fs.readFileSync(mftPath, 'utf8'))
-          : null;
-        let sources = mft && mft.configs.length > 0
-          ? mft.configs.filter((c) => c.source).map((c) => ({
-              file: c.source,
-              demo: c.demo,
-              label: c.catalog || c.source,
-            }))
-          : dts.map((f) => ({ file: f, demo: true, label: f }));
-        sources = sources.filter((s) => fs.existsSync(path.join(dir, s.file)));
-        if (sources.length === 0 && !hasCf) continue;
-        out.push({
-          vendor: vendor.name,
-          name: name.name,
-          version: ver.name,
-          dir,
-          cfPath: hasCf ? cfPath : '',
-          mft: mft ? { vendor: mft.vendor, name: mft.name, version: mft.version, appVersion: mft.appVersion } : null,
-          sources,
-        });
+        const entry = templateFromDir(dir, vendor.name, name.name, ver.name);
+        if (entry) out.push(entry);
       }
     }
   }
@@ -530,7 +535,32 @@ function scanTemplates(root) {
   return out;
 }
 
-async function handleTemplates(res) {
+// Скан произвольного каталога (пользователь указал папку с шаблоном вручную):
+// штатное дерево <разработчик>\<имя>\<версия> либо шаблон(ы), лежащие глубже
+// или в самом каталоге.
+function scanTemplatesAny(root) {
+  const out = scanTemplates(root);
+  if (out.length > 0) return out;
+  for (const t of findTemplateRoots(root)) {
+    const entry = templateFromDir(t.dir, t.vendor, t.name, t.version);
+    if (entry) out.push(entry);
+  }
+  out.sort((a, b) => (a.vendor + '\\' + a.name + '\\' + a.version).localeCompare(b.vendor + '\\' + b.name + '\\' + b.version, 'ru'));
+  return out;
+}
+
+async function handleTemplates(res, query) {
+  // ?dir=<каталог> — показать шаблоны из указанной пользователем папки
+  // (вне каталога шаблонов из настроек), например после ручной установки.
+  const custom = String(query?.get('dir') ?? '').trim();
+  if (custom) {
+    if (!fs.existsSync(custom) || !fs.statSync(custom).isDirectory()) {
+      send(res, 400, { error: `Каталог не найден: ${custom}` });
+      return;
+    }
+    send(res, 200, { root: custom, templates: scanTemplatesAny(custom) });
+    return;
+  }
   const root = (await resolveToolPath('templatesRoot')) || DEFAULT_TEMPLATES_ROOT;
   send(res, 200, { root, templates: scanTemplates(root) });
 }
@@ -538,8 +568,9 @@ async function handleTemplates(res) {
 // Установка шаблона из скачанного zip (D13): распаковка во временную папку
 // (Expand-Archive — в Node нет встроенного zip), поиск файлов шаблона
 // (1cv8.mft / 1Cv8.cf) в корне архива или на 2 уровнях ниже, копирование в
-// дерево каталога шаблонов. Если в архиве только setup.exe — тихая установка
-// не поддерживается (ключ не определен эмпирически), сообщаем пользователю.
+// дерево каталога шаблонов. Если в архиве только setup.exe — попытка тихой
+// установки в каталог шаблонов (ключи /quiet /InstallPath=), при неудаче —
+// установщик открывается в обычном режиме: пользователь укажет путь сам.
 function sanitizeName(s) {
   return String(s ?? '').replace(/[\\/:*?"<>|]/g, '_').trim() || 'Без имени';
 }
@@ -581,6 +612,58 @@ async function copyDirContents(src, dst) {
   }
 }
 
+// Поиск setup.exe в распакованном архиве (до 3 уровней вложенности).
+function findSetupExe(base) {
+  const walk = (dir, depth) => {
+    let entries;
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return ''; }
+    const exe = entries.find((e) => e.isFile() && /^setup\.exe$/i.test(e.name));
+    if (exe) return path.join(dir, exe.name);
+    if (depth >= 3) return '';
+    for (const e of entries) {
+      if (e.isDirectory()) {
+        const p = walk(path.join(dir, e.name), depth + 1);
+        if (p) return p;
+      }
+    }
+    return '';
+  };
+  return walk(base, 0);
+}
+
+// Тихая установка дистрибутива шаблона: setup.exe /quiet /InstallPath=<каталог>
+// (ключи установщиков 1С; работают не для всех дистрибутивов). Ждем завершения
+// до timeoutMs; таймаут обычно значит, что вместо тихого режима открылось окно.
+function runSetupQuiet(setupPath, installDir, timeoutMs) {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (result) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(result);
+    };
+    const child = spawn(setupPath, ['/quiet', `/InstallPath=${installDir}`], {
+      windowsHide: true,
+      stdio: 'ignore',
+    });
+    const timer = setTimeout(() => {
+      child.kill();
+      finish({ timedOut: true, code: null });
+    }, timeoutMs);
+    child.on('close', (code) => finish({ timedOut: false, code }));
+    child.on('error', () => finish({ timedOut: false, code: -1 }));
+  });
+}
+
+// Установщик в обычном режиме: видимое окно, пользователь указывает путь.
+// Процесс независимый (окно живет и после ответа API); временную папку с
+// распакованным дистрибутивом не удаляем — установщик читает файлы оттуда.
+function launchSetupInteractive(setupPath) {
+  const child = spawn(setupPath, [], { detached: true, windowsHide: false, stdio: 'ignore' });
+  child.unref();
+}
+
 async function handleTemplatesInstall(req, res) {
   const body = await readBody(req);
   const zipPath = String(body?.zipPath ?? '').trim();
@@ -594,6 +677,8 @@ async function handleTemplatesInstall(req, res) {
   }
   const root = (await resolveToolPath('templatesRoot')) || DEFAULT_TEMPLATES_ROOT;
   const tmp = path.join(process.env.TEMP || path.join(process.env.LOCALAPPDATA, 'Temp'), `cabinet-template-${Date.now()}`);
+  // true — во временной папке остался работающий установщик, не удалять
+  let keepTmp = false;
   try {
     await fsp.mkdir(tmp, { recursive: true });
     const r = spawnSync('powershell.exe', [
@@ -606,20 +691,30 @@ async function handleTemplatesInstall(req, res) {
     }
     const found = findTemplateRoots(tmp);
     if (found.length === 0) {
-      const hasSetup = (function walk(dir, depth) {
-        let entries;
-        try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return false; }
-        if (entries.some((e) => e.isFile() && /^setup\.exe$/i.test(e.name))) return true;
-        if (depth >= 3) return false;
-        for (const e of entries) {
-          if (e.isDirectory() && walk(path.join(dir, e.name), depth + 1)) return true;
-        }
-        return false;
-      })(tmp, 0);
-      send(res, 400, {
-        error: hasSetup
-          ? `В архиве только установщик setup.exe без файлов шаблона — автоматическая установка не поддерживается (тихий ключ не определен). Установите шаблон вручную, файлы должны оказаться в: ${root}`
-          : 'В архиве не найдены файлы шаблона (1cv8.mft или 1Cv8.cf)',
+      const setupExe = findSetupExe(tmp);
+      if (!setupExe) {
+        send(res, 400, { error: 'В архиве не найдены файлы шаблона (1cv8.mft или 1Cv8.cf)' });
+        return;
+      }
+      // Шаблон(ы) в каталоге до и после тихой установки — так видим, что она сработала
+      const before = new Set(scanTemplates(root).map((t) => t.dir));
+      const quiet = await runSetupQuiet(setupExe, root, 150000);
+      const installed = scanTemplates(root).map((t) => t.dir).filter((d) => !before.has(d));
+      if (!quiet.timedOut && quiet.code === 0 && installed.length > 0) {
+        console.log(`[cabinet] шаблон установлен из setup.exe (тихо): ${installed.join(', ')}`);
+        send(res, 200, { ok: true, installed });
+        return;
+      }
+      // Тихий режим не сработал (нет ключа/шаблон не появился) — обычное окно
+      launchSetupInteractive(setupExe);
+      keepTmp = true;
+      console.log(`[cabinet] setup.exe открыт в обычном режиме: ${setupExe} (tmp: ${tmp})`);
+      send(res, 200, {
+        ok: true,
+        installed: [],
+        installer: true,
+        extractedDir: tmp,
+        message: `Тихая установка не сработала — открыт установщик в обычном режиме. Укажите в нем путь установки: ${root}. После установки нажмите «Обновить список». Временная папка с дистрибутивом (удалите после установки): ${tmp}`,
       });
       return;
     }
@@ -634,7 +729,7 @@ async function handleTemplatesInstall(req, res) {
   } catch (err) {
     send(res, 500, { error: `Не удалось установить шаблон: ${err.message}` });
   } finally {
-    await fsp.rm(tmp, { recursive: true, force: true }).catch(() => {});
+    if (!keepTmp) await fsp.rm(tmp, { recursive: true, force: true }).catch(() => {});
   }
 }
 
@@ -1052,7 +1147,7 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/tools/detect' && req.method === 'POST') return await handleToolsDetect(req, res);
     if (p === '/api/tools/browse' && req.method === 'POST') return await handleToolsBrowse(req, res);
     if (p === '/api/platforms' && req.method === 'GET') return await handlePlatforms(res);
-    if (p === '/api/templates' && req.method === 'GET') return await handleTemplates(res);
+    if (p === '/api/templates' && req.method === 'GET') return await handleTemplates(res, url.searchParams);
     if (p === '/api/templates/install' && req.method === 'POST') return await handleTemplatesInstall(req, res);
     if (p === '/api/users' && req.method === 'GET') return await handleUsers(req, res, url.searchParams);
     if (p === '/api/login' && req.method === 'POST') return await handleLogin(req, res);
